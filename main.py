@@ -1,63 +1,49 @@
-import google.generativeai as genai
 import os
+import sys
+import asyncio
+import logging
+from os import getenv
 
-from langchain_google_genai import ChatGoogleGenerativeAI
-
-import urllib
-import warnings
-
-import pandas as pd
-import langchain_chroma
-
-from langchain_core.prompts import PromptTemplate
-from langchain.chains.question_answering import load_qa_chain
-
-from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain_community.vectorstores import Chroma
-from langchain.chains import RetrievalQA
-from langchain_google_genai.embeddings import GoogleGenerativeAIEmbeddings
+from aiogram import Bot, Dispatcher
+from aiogram.filters import CommandStart
+from aiogram.types import Message
 from dotenv import find_dotenv, load_dotenv
-from src.load_data import get_vector_store
 
+from src.llm_working import get_answer
+
+
+# Load envs
 load_dotenv(find_dotenv())
-GOOGLE_API_KEY=os.getenv("GOOGLE_API_KEY")
-print(GOOGLE_API_KEY)
-genai.configure(api_key=GOOGLE_API_KEY)
-model_name = "gemini-1.5-flash"
+TOKEN = getenv("TOKEN")
+print(TOKEN)
 
-# Model initialization
-model = ChatGoogleGenerativeAI(model=model_name,google_api_key=GOOGLE_API_KEY,
-                             temperature=0.1, max_retries=2)
+dp = Dispatcher()
 
-# Vector store initialization
-vector_store = get_vector_store(GOOGLE_API_KEY)
-vector_index = vector_store.as_retriever(search_kwargs={"k": 5})
+@dp.message(CommandStart())
+async def command_start_handler(message: Message) -> None:
+    """
+    This handler receives messages with `/start` command
+    """
+    # Most event objects have aliases for API methods that can be called in events' context
+    # For example if you want to answer to incoming message you can use `message.answer(...)` alias
+    # and the target chat will be passed to :ref:`aiogram.methods.send_message.SendMessage`
+    # method automatically or call API method directly via
+    # Bot instance: `bot.send_message(chat_id=message.chat.id, ...)`
+    await message.answer(f"Hello, {message.from_user.first_name}! I am an AI bot that can answer questions about Operating Systems. Ask me questions about Operating Systems and I will answer them.")
 
-
-template = """You are a Professor of Operating Systems. You can use Modern Operating Systems by Tanenbaum Book to answer questions about Operating Systems.
-Use the following pieces of context in the book to answer the question at the end. If you don't know the answer, just say that you don't know, don't try to make up an answer. Keep the answer as concise as possible.
-{context}
-Question: {question}
-Helpful Answer:"""
-QA_CHAIN_PROMPT = PromptTemplate.from_template(template)# Run chain
-qa_chain = RetrievalQA.from_chain_type(
-    model,
-    retriever=vector_index,
-    return_source_documents=True,
-    chain_type_kwargs={"prompt": QA_CHAIN_PROMPT}
-)
+@dp.message()
+async def handle_question(message: Message):
+    result = get_answer(message.text)
+    #result = chain.invoke(message.text)
+    await message.reply(result)
 
 
-input_question = input("Enter your question or 0 to exit: ")
+async def main():
+    print("in main")
+    bot = Bot(token=TOKEN)
+    await dp.start_polling(bot)
 
 
-
-
-while input_question != "0":
-    result = qa_chain({"query": input_question})
-    print(result["result"])
-    input_question = input("Enter your question or 0 to exit: ")
-
-
-
-
+if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO, stream=sys.stdout)
+    asyncio.run(main())

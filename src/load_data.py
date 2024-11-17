@@ -3,7 +3,8 @@ from langchain_google_genai import GoogleGenerativeAIEmbeddings
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 import os
 from tenacity import retry, stop_after_attempt, wait_exponential
-from langchain_community.vectorstores import Chroma
+#from langchain_community.vectorstores import Chroma
+from langchain_chroma import Chroma
 import google.generativeai as genai
 from dotenv import find_dotenv, load_dotenv
 
@@ -63,13 +64,6 @@ def get_vector_store(GOOGLE_API_KEY, pdf_path="data/modern OS TANENBAUM.pdf"):
     vector_store = make_vector_store(GOOGLE_API_KEY, text_pages)
     print("Vector store created")
     return vector_store
-
-if __name__ == "__main__":
-    GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
-    genai.configure(api_key=GOOGLE_API_KEY)
-    vector_store = get_vector_store(GOOGLE_API_KEY)
-    print("Vector store created")
-    vector_index = vector_store.as_retriever(search_kwargs={"k": 5})
 
 
 
